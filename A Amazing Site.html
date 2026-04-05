@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Editable Floating Text RGB Fixed</title>
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+    gap: 20px;
+  }
+
+  .text {
+    user-select: none;
+  }
+
+  .text span {
+    display: inline-block;
+    font-size: 42px;
+    transition: transform 0.25s ease-in-out;
+  }
+
+  .text span:hover,
+  .text span.active {
+    transform: translateY(-25px);
+  }
+
+  .editable {
+    border: 1px dashed #555;
+    padding: 10px;
+    user-select: text;
+  }
+
+  button, input[type="color"] {
+    padding: 8px 12px;
+    font-size: 15px;
+    cursor: pointer;
+    border: none;
+    margin: 2px;
+  }
+
+  .gradient span {
+    background: linear-gradient(270deg, red, orange, yellow, lime, cyan, blue, violet);
+    background-size: 1400% 1400%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientMove 5s ease infinite;
+  }
+
+  @keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="text" class="text"></div>
+
+<div>
+  <button id="editBtn" onclick="enableEdit()">Edit</button>
+  <button id="doneBtn" onclick="saveEdit()" style="display:none;">Done</button>
+
+  <!-- Color picker only shows in edit mode -->
+  <label for="colorPicker" id="colorLabel" style="display:none;">Color</label>
+  <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="display:none;">
+
+  <button onclick="toggleGradient()">RGB Mode</button>
+</div>
+
+<script>
+let textDiv = document.getElementById("text");
+let editBtn = document.getElementById("editBtn");
+let doneBtn = document.getElementById("doneBtn");
+let colorPicker = document.getElementById("colorPicker");
+let colorLabel = document.getElementById("colorLabel");
+
+// Load saved data
+let content = localStorage.getItem("myText") || "Tap Me 😎";
+let savedColor = localStorage.getItem("color") || "#ffffff";
+let gradientMode = localStorage.getItem("gradient") === "true";
+
+// Render text
+function renderText(text) {
+  textDiv.innerHTML = "";
+
+  for (let char of text) {
+    let span = document.createElement("span");
+    span.innerHTML = (char === " ") ? "&nbsp;" : char;
+
+    if (!gradientMode) {
+      span.style.color = savedColor;
+    }
+
+    // Mobile tap support
+    span.addEventListener("click", () => {
+      span.classList.toggle("active");
+    });
+
+    textDiv.appendChild(span);
+  }
+
+  textDiv.classList.toggle("gradient", gradientMode);
+
+  // Update color picker visibility correctly
+  updateColorPickerVisibility();
+}
+
+// Enable editing
+function enableEdit() {
+  textDiv.classList.add("editable");
+  textDiv.contentEditable = true;
+  textDiv.innerText = content;
+
+  editBtn.style.display = "none";
+  doneBtn.style.display = "inline-block";
+
+  updateColorPickerVisibility();
+}
+
+// Save editing
+function saveEdit() {
+  content = textDiv.innerText;
+  localStorage.setItem("myText", content);
+
+  textDiv.contentEditable = false;
+  textDiv.classList.remove("editable");
+
+  renderText(content);
+
+  editBtn.style.display = "inline-block";
+  doneBtn.style.display = "none";
+
+  updateColorPickerVisibility();
+}
+
+// Change color (works only in edit mode and non-gradient)
+function changeColor(color) {
+  if (textDiv.contentEditable && !gradientMode) {
+    savedColor = color;
+    localStorage.setItem("color", color);
+    renderText(content);
+  }
+}
+
+// Toggle gradient / RGB Mode
+function toggleGradient() {
+  gradientMode = !gradientMode;
+  localStorage.setItem("gradient", gradientMode);
+  renderText(content);
+}
+
+// Strict control: color picker shows ONLY in edit mode AND gradient OFF
+function updateColorPickerVisibility() {
+  if (textDiv.contentEditable && !gradientMode) {
+    colorPicker.style.display = "inline-block";
+    colorLabel.style.display = "inline-block";
+    colorPicker.value = savedColor;
+  } else {
+    colorPicker.style.display = "none";
+    colorLabel.style.display = "none";
+  }
+}
+
+// Initial render
+renderText(content);
+</script>
+
+</body>
+</html>
