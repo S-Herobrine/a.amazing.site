@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Flappy You 😎</title>
-
 <style>
 body {
   margin: 0;
@@ -12,12 +11,8 @@ body {
   font-family: Arial;
 }
 
-/* Canvas */
-canvas {
-  display: block;
-}
+canvas { display: block; }
 
-/* UI */
 #ui {
   position: fixed;
   top: 10px;
@@ -34,7 +29,6 @@ button {
   cursor: pointer;
 }
 
-/* Start Menu */
 #menu, #gameOverScreen {
   position: fixed;
   top: 50%;
@@ -47,18 +41,15 @@ button {
   border-radius: 10px;
 }
 </style>
-
 </head>
 <body>
 
-<!-- START MENU -->
 <div id="menu">
   <h2>Upload Your Image 😎</h2>
   <input type="file" id="imgUpload"><br><br>
   <button onclick="startGame()">Start Game</button>
 </div>
 
-<!-- UI -->
 <div id="ui" style="display:none;">
   Score: <span id="score">0</span><br>
   <button onclick="pauseGame()">Pause</button>
@@ -67,7 +58,6 @@ button {
   <button onclick="quitGame()">Quit</button>
 </div>
 
-<!-- GAME OVER -->
 <div id="gameOverScreen" style="display:none;">
   <h2>💀 Game Over</h2>
   <p id="finalScore"></p>
@@ -80,18 +70,17 @@ button {
 <script>
 let canvas = document.getElementById("game");
 let ctx = canvas.getContext("2d");
-
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-let bird = { x: 100, y: 200, vy: 0 };
+let bird = { x: 100, y: 200, vy: 0, width: 50, height: 50 };
 let gravity = 0.5;
 let pipes = [];
 let score = 0;
 let gameRunning = false;
 let img = new Image();
 
-// START GAME (FIXED)
+// Start Game
 function startGame() {
   let file = document.getElementById("imgUpload").files[0];
   if (!file) return alert("Upload image first!");
@@ -99,6 +88,10 @@ function startGame() {
   img.src = URL.createObjectURL(file);
 
   img.onload = () => {
+    const aspect = img.width / img.height;
+    bird.width = 50;
+    bird.height = bird.width / aspect;
+
     document.getElementById("menu").style.display = "none";
     document.getElementById("ui").style.display = "block";
 
@@ -108,7 +101,7 @@ function startGame() {
   };
 }
 
-// RESET
+// Reset
 function resetGame() {
   bird.y = 200;
   bird.vy = 0;
@@ -118,7 +111,7 @@ function resetGame() {
   document.getElementById("gameOverScreen").style.display = "none";
 }
 
-// GAME LOOP
+// Game Loop
 function loop() {
   if (!gameRunning) return;
 
@@ -129,37 +122,34 @@ function loop() {
   bird.y += bird.vy;
 
   // Draw bird
-  if (img.complete) {
-    ctx.drawImage(img, bird.x, bird.y, 50, 50);
-  }
+  if (img.complete) ctx.drawImage(img, bird.x, bird.y, bird.width, bird.height);
 
-  // Create pipes
+  // Pipes
   if (Math.random() < 0.02) {
-    let gap = 150;
-    let top = Math.random() * (canvas.height - gap);
-    pipes.push({ x: canvas.width, top, passed:false });
+    let gap = 150 + Math.random() * 50; // pipe gap
+    let top = Math.random() * (canvas.height - gap - 100) + 50;
+    pipes.push({ x: canvas.width, top, gap, passed: false });
   }
 
-  // Pipes loop
   pipes.forEach((p) => {
     p.x -= 3;
 
     // Draw pipes
     ctx.fillStyle = "green";
     ctx.fillRect(p.x, 0, 50, p.top);
-    ctx.fillRect(p.x, p.top + 150, 50, canvas.height);
+    ctx.fillRect(p.x, p.top + p.gap, 50, canvas.height);
 
     // Collision
     if (
       bird.x < p.x + 50 &&
-      bird.x + 50 > p.x &&
-      (bird.y < p.top || bird.y + 50 > p.top + 150)
+      bird.x + bird.width > p.x &&
+      (bird.y < p.top || bird.y + bird.height > p.top + p.gap)
     ) {
       gameOver();
     }
 
-    // Score fix
-    if (p.x < bird.x && !p.passed) {
+    // Score
+    if (p.x + 50 < bird.x && !p.passed) {
       score++;
       p.passed = true;
       document.getElementById("score").innerText = score;
@@ -167,44 +157,26 @@ function loop() {
   });
 
   // Ground / ceiling
-  if (bird.y > canvas.height || bird.y < 0) {
+  if (bird.y + bird.height > canvas.height || bird.y < 0) {
     gameOver();
   }
 
   requestAnimationFrame(loop);
 }
 
-// CONTROLS
-function jump() {
-  bird.vy = -8;
-}
-
+// Controls: mouse / touch / space
+function jump() { bird.vy = -8; }
 window.addEventListener("click", jump);
 window.addEventListener("touchstart", jump);
+window.addEventListener("keydown", (e) => { if (e.code === "Space") jump(); });
 
-// BUTTONS
-function pauseGame() {
-  gameRunning = false;
-}
+// Buttons
+function pauseGame() { gameRunning = false; }
+function resumeGame() { if (!gameRunning) { gameRunning = true; loop(); } }
+function restartGame() { resetGame(); gameRunning = true; loop(); }
+function quitGame() { window.location.href = "/"; }
 
-function resumeGame() {
-  if (!gameRunning) {
-    gameRunning = true;
-    loop();
-  }
-}
-
-function restartGame() {
-  resetGame();
-  gameRunning = true;
-  loop();
-}
-
-function quitGame() {
-  window.location.href = "/";
-}
-
-// GAME OVER
+// Game Over
 function gameOver() {
   gameRunning = false;
   document.getElementById("gameOverScreen").style.display = "block";
