@@ -2,185 +2,162 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Flappy You 😎</title>
+<title>Flappy You Pro 😎</title>
 <style>
-body {
-  margin: 0;
-  background: linear-gradient(skyblue, lightblue);
-  overflow: hidden;
-  font-family: Arial;
-}
-
-canvas { display: block; }
-
-#ui {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  color: white;
-  font-size: 20px;
-}
-
-button {
-  margin: 5px;
-  padding: 8px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-#menu, #gameOverScreen {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: #111;
-  color: white;
-  padding: 20px;
-  text-align: center;
-  border-radius: 10px;
-}
+body { margin:0; overflow:hidden; font-family:Arial; background:#87CEEB;}
+canvas { display:block; }
+#ui { position:fixed; top:10px; left:10px; color:white; font-size:20px; }
+button { margin:5px; padding:8px; border:none; border-radius:8px; cursor:pointer; }
+#menu, #gameOverScreen { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#111; color:white; padding:20px; text-align:center; border-radius:10px;}
 </style>
 </head>
 <body>
 
 <div id="menu">
-  <h2>Upload Your Image 😎</h2>
-  <input type="file" id="imgUpload"><br><br>
-  <button onclick="startGame()">Start Game</button>
+<h2>Upload Your Image 😎</h2>
+<input type="file" id="imgUpload"><br><br>
+<button onclick="startGame()">Start Game</button>
 </div>
 
 <div id="ui" style="display:none;">
-  Score: <span id="score">0</span><br>
-  <button onclick="pauseGame()">Pause</button>
-  <button onclick="resumeGame()">Resume</button>
-  <button onclick="restartGame()">Restart</button>
-  <button onclick="quitGame()">Quit</button>
+Score: <span id="score">0</span><br>
+<button onclick="pauseGame()">Pause</button>
+<button onclick="resumeGame()">Resume</button>
+<button onclick="restartGame()">Restart</button>
+<button onclick="quitGame()">Quit</button>
 </div>
 
 <div id="gameOverScreen" style="display:none;">
-  <h2>💀 Game Over</h2>
-  <p id="finalScore"></p>
-  <button onclick="restartGame()">Restart</button>
-  <button onclick="quitGame()">Quit</button>
+<h2>💀 Game Over</h2>
+<p id="finalScore"></p>
+<button onclick="restartGame()">Restart</button>
+<button onclick="quitGame()">Quit</button>
 </div>
 
 <canvas id="game"></canvas>
 
 <script>
-let canvas = document.getElementById("game");
-let ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+let canvas=document.getElementById("game");
+let ctx=canvas.getContext("2d");
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
 
-let bird = { x: 100, y: 200, vy: 0, width: 50, height: 50 };
-let gravity = 0.5;
-let pipes = [];
-let score = 0;
-let gameRunning = false;
-let img = new Image();
+let bird={x:100,y:200,vy:0,width:50,height:50,rotation:0};
+let gravity=0.5;
+let pipes=[];
+let score=0;
+let gameRunning=false;
+let img=new Image();
+let bgX=0;
+
+// Sounds
+let flapSound = new Audio('https://freesound.org/data/previews/458/458931_838627-lq.mp3');
+let scoreSound = new Audio('https://freesound.org/data/previews/276/276020_5121236-lq.mp3');
+let crashSound = new Audio('https://freesound.org/data/previews/351/351657_5121236-lq.mp3');
 
 // Start Game
-function startGame() {
-  let file = document.getElementById("imgUpload").files[0];
-  if (!file) return alert("Upload image first!");
-
-  img.src = URL.createObjectURL(file);
-
-  img.onload = () => {
-    const aspect = img.width / img.height;
-    bird.width = 50;
-    bird.height = bird.width / aspect;
-
-    document.getElementById("menu").style.display = "none";
-    document.getElementById("ui").style.display = "block";
-
+function startGame(){
+  let file=document.getElementById("imgUpload").files[0];
+  if(!file) return alert("Upload image first!");
+  img.src=URL.createObjectURL(file);
+  img.onload=()=>{
+    const aspect=img.width/img.height;
+    bird.width=50;
+    bird.height=bird.width/aspect;
+    document.getElementById("menu").style.display="none";
+    document.getElementById("ui").style.display="block";
     resetGame();
-    gameRunning = true;
+    gameRunning=true;
     loop();
   };
 }
 
 // Reset
-function resetGame() {
-  bird.y = 200;
-  bird.vy = 0;
-  pipes = [];
-  score = 0;
-  document.getElementById("score").innerText = score;
-  document.getElementById("gameOverScreen").style.display = "none";
+function resetGame(){
+  bird.y=200; bird.vy=0; bird.rotation=0;
+  pipes=[]; score=0;
+  document.getElementById("score").innerText=score;
+  document.getElementById("gameOverScreen").style.display="none";
 }
 
 // Game Loop
-function loop() {
-  if (!gameRunning) return;
+function loop(){
+  if(!gameRunning) return;
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Background
+  ctx.fillStyle="#87CEEB";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  bgX-=1.5;
+  if(bgX<=-canvas.width) bgX=0;
+  ctx.fillStyle="#70C358"; // ground
+  ctx.fillRect(0,canvas.height-50,canvas.width,50);
 
   // Bird physics
-  bird.vy += gravity;
-  bird.y += bird.vy;
+  bird.vy+=gravity;
+  bird.y+=bird.vy;
+  bird.rotation=Math.min(Math.max(bird.vy/10,-0.5,0.5),0.5);
 
-  // Draw bird
-  if (img.complete) ctx.drawImage(img, bird.x, bird.y, bird.width, bird.height);
+  // Draw bird with rotation
+  ctx.save();
+  ctx.translate(bird.x+bird.width/2,bird.y+bird.height/2);
+  ctx.rotate(bird.rotation);
+  if(img.complete) ctx.drawImage(img,-bird.width/2,-bird.height/2,bird.width,bird.height);
+  ctx.restore();
 
   // Pipes
-  if (Math.random() < 0.02) {
-    let gap = 150 + Math.random() * 50; // pipe gap
-    let top = Math.random() * (canvas.height - gap - 100) + 50;
-    pipes.push({ x: canvas.width, top, gap, passed: false });
+  if(Math.random()<0.02){
+    let gap=150+Math.random()*100;
+    let top=Math.random()*(canvas.height-gap-100)+50;
+    pipes.push({x:canvas.width,top,gap,passed:false});
   }
 
-  pipes.forEach((p) => {
-    p.x -= 3;
-
-    // Draw pipes
-    ctx.fillStyle = "green";
-    ctx.fillRect(p.x, 0, 50, p.top);
-    ctx.fillRect(p.x, p.top + p.gap, 50, canvas.height);
+  pipes.forEach(p=>{
+    p.x-=3;
+    ctx.fillStyle="green";
+    ctx.fillRect(p.x,0,50,p.top);
+    ctx.fillRect(p.x,p.top+p.gap,50,canvas.height);
 
     // Collision
-    if (
-      bird.x < p.x + 50 &&
-      bird.x + bird.width > p.x &&
-      (bird.y < p.top || bird.y + bird.height > p.top + p.gap)
-    ) {
+    if(bird.x< p.x+50 && bird.x+bird.width>p.x && (bird.y< p.top || bird.y+bird.height>p.top+p.gap)){
+      crashSound.play();
       gameOver();
     }
 
     // Score
-    if (p.x + 50 < bird.x && !p.passed) {
+    if(p.x+50<bird.x && !p.passed){
       score++;
-      p.passed = true;
-      document.getElementById("score").innerText = score;
+      scoreSound.play();
+      p.passed=true;
+      document.getElementById("score").innerText=score;
     }
   });
 
   // Ground / ceiling
-  if (bird.y + bird.height > canvas.height || bird.y < 0) {
+  if(bird.y+bird.height>canvas.height || bird.y<0){
+    crashSound.play();
     gameOver();
   }
 
   requestAnimationFrame(loop);
 }
 
-// Controls: mouse / touch / space
-function jump() { bird.vy = -8; }
-window.addEventListener("click", jump);
-window.addEventListener("touchstart", jump);
-window.addEventListener("keydown", (e) => { if (e.code === "Space") jump(); });
+// Controls
+function jump(){ bird.vy=-8; flapSound.play(); }
+window.addEventListener("click",jump);
+window.addEventListener("touchstart",jump);
+window.addEventListener("keydown",e=>{ if(e.code==="Space") jump(); });
 
 // Buttons
-function pauseGame() { gameRunning = false; }
-function resumeGame() { if (!gameRunning) { gameRunning = true; loop(); } }
-function restartGame() { resetGame(); gameRunning = true; loop(); }
-function quitGame() { window.location.href = "/"; }
+function pauseGame(){ gameRunning=false; }
+function resumeGame(){ if(!gameRunning){ gameRunning=true; loop(); } }
+function restartGame(){ resetGame(); gameRunning=true; loop(); }
+function quitGame(){ window.location.href="/"; }
 
 // Game Over
-function gameOver() {
-  gameRunning = false;
-  document.getElementById("gameOverScreen").style.display = "block";
-  document.getElementById("finalScore").innerText = "Score: " + score;
+function gameOver(){
+  gameRunning=false;
+  document.getElementById("gameOverScreen").style.display="block";
+  document.getElementById("finalScore").innerText="Score: "+score;
 }
 </script>
 
