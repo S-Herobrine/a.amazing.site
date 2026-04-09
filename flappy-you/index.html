@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flappy You 😎</title>
+
+<style>
+body {
+  margin: 0;
+  background: linear-gradient(skyblue, lightblue);
+  overflow: hidden;
+  font-family: Arial;
+}
+
+/* Canvas */
+canvas {
+  display: block;
+}
+
+/* UI */
+#ui {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  color: white;
+  font-size: 20px;
+}
+
+button {
+  margin: 5px;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Start Menu */
+#menu, #gameOverScreen {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #111;
+  color: white;
+  padding: 20px;
+  text-align: center;
+  border-radius: 10px;
+}
+</style>
+
+</head>
+<body>
+
+<!-- START MENU -->
+<div id="menu">
+  <h2>Upload Your Image 😎</h2>
+  <input type="file" id="imgUpload"><br><br>
+  <button onclick="startGame()">Start Game</button>
+</div>
+
+<!-- UI -->
+<div id="ui" style="display:none;">
+  Score: <span id="score">0</span><br>
+  <button onclick="pauseGame()">Pause</button>
+  <button onclick="resumeGame()">Resume</button>
+  <button onclick="restartGame()">Restart</button>
+  <button onclick="quitGame()">Quit</button>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameOverScreen" style="display:none;">
+  <h2>💀 Game Over</h2>
+  <p id="finalScore"></p>
+  <button onclick="restartGame()">Restart</button>
+  <button onclick="quitGame()">Quit</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+let canvas = document.getElementById("game");
+let ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let bird = { x: 100, y: 200, vy: 0 };
+let gravity = 0.5;
+let pipes = [];
+let score = 0;
+let gameRunning = false;
+let img = new Image();
+
+// START GAME (FIXED)
+function startGame() {
+  let file = document.getElementById("imgUpload").files[0];
+  if (!file) return alert("Upload image first!");
+
+  img.src = URL.createObjectURL(file);
+
+  img.onload = () => {
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("ui").style.display = "block";
+
+    resetGame();
+    gameRunning = true;
+    loop();
+  };
+}
+
+// RESET
+function resetGame() {
+  bird.y = 200;
+  bird.vy = 0;
+  pipes = [];
+  score = 0;
+  document.getElementById("score").innerText = score;
+  document.getElementById("gameOverScreen").style.display = "none";
+}
+
+// GAME LOOP
+function loop() {
+  if (!gameRunning) return;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Bird physics
+  bird.vy += gravity;
+  bird.y += bird.vy;
+
+  // Draw bird
+  if (img.complete) {
+    ctx.drawImage(img, bird.x, bird.y, 50, 50);
+  }
+
+  // Create pipes
+  if (Math.random() < 0.02) {
+    let gap = 150;
+    let top = Math.random() * (canvas.height - gap);
+    pipes.push({ x: canvas.width, top, passed:false });
+  }
+
+  // Pipes loop
+  pipes.forEach((p) => {
+    p.x -= 3;
+
+    // Draw pipes
+    ctx.fillStyle = "green";
+    ctx.fillRect(p.x, 0, 50, p.top);
+    ctx.fillRect(p.x, p.top + 150, 50, canvas.height);
+
+    // Collision
+    if (
+      bird.x < p.x + 50 &&
+      bird.x + 50 > p.x &&
+      (bird.y < p.top || bird.y + 50 > p.top + 150)
+    ) {
+      gameOver();
+    }
+
+    // Score fix
+    if (p.x < bird.x && !p.passed) {
+      score++;
+      p.passed = true;
+      document.getElementById("score").innerText = score;
+    }
+  });
+
+  // Ground / ceiling
+  if (bird.y > canvas.height || bird.y < 0) {
+    gameOver();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// CONTROLS
+function jump() {
+  bird.vy = -8;
+}
+
+window.addEventListener("click", jump);
+window.addEventListener("touchstart", jump);
+
+// BUTTONS
+function pauseGame() {
+  gameRunning = false;
+}
+
+function resumeGame() {
+  if (!gameRunning) {
+    gameRunning = true;
+    loop();
+  }
+}
+
+function restartGame() {
+  resetGame();
+  gameRunning = true;
+  loop();
+}
+
+function quitGame() {
+  window.location.href = "/";
+}
+
+// GAME OVER
+function gameOver() {
+  gameRunning = false;
+  document.getElementById("gameOverScreen").style.display = "block";
+  document.getElementById("finalScore").innerText = "Score: " + score;
+}
+</script>
+
+</body>
+</html>
