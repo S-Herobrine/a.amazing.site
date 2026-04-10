@@ -1,164 +1,215 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Flappy You Pro 😎</title>
+<title>Flappy You PRO 😎</title>
 <style>
-body { margin:0; overflow:hidden; font-family:Arial; background:#87CEEB;}
-canvas { display:block; }
-#ui { position:fixed; top:10px; left:10px; color:white; font-size:20px; }
-button { margin:5px; padding:8px; border:none; border-radius:8px; cursor:pointer; }
-#menu, #gameOverScreen { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#111; color:white; padding:20px; text-align:center; border-radius:10px;}
+body {
+    margin: 0;
+    background: #70c5ce;
+    font-family: Arial;
+    text-align: center;
+}
+canvas {
+    display: none;
+    margin: auto;
+    background: #70c5ce;
+}
+#menu, #gameOver {
+    position: absolute;
+    width: 100%;
+    top: 40%;
+    text-align: center;
+}
+button {
+    padding: 10px 20px;
+    font-size: 18px;
+    margin: 5px;
+    cursor: pointer;
+}
+#score {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 24px;
+    color: white;
+}
 </style>
 </head>
 <body>
 
 <div id="menu">
-<h2>Upload Your Image 😎</h2>
-<input type="file" id="imgUpload"><br><br>
-<button onclick="startGame()">Start Game</button>
+    <h1>Flappy You 😎</h1>
+    <input type="file" id="upload"><br><br>
+    <button onclick="startGame()">Start Game</button>
 </div>
 
-<div id="ui" style="display:none;">
-Score: <span id="score">0</span><br>
-<button onclick="pauseGame()">Pause</button>
-<button onclick="resumeGame()">Resume</button>
-<button onclick="restartGame()">Restart</button>
-<button onclick="quitGame()">Quit</button>
+<div id="gameOver" style="display:none;">
+    <h1>Game Over 💀</h1>
+    <button onclick="restartGame()">Restart</button>
+    <button onclick="quitGame()">Quit</button>
 </div>
 
-<div id="gameOverScreen" style="display:none;">
-<h2>💀 Game Over</h2>
-<p id="finalScore"></p>
-<button onclick="restartGame()">Restart</button>
-<button onclick="quitGame()">Quit</button>
-</div>
+<div id="score">0</div>
 
-<canvas id="game"></canvas>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
 
 <script>
-let canvas=document.getElementById("game");
-let ctx=canvas.getContext("2d");
-canvas.width=window.innerWidth;
-canvas.height=window.innerHeight;
+let canvas = document.getElementById("gameCanvas");
+let ctx = canvas.getContext("2d");
 
-let bird={x:100,y:200,vy:0,width:50,height:50,rotation:0};
-let gravity=0.5;
-let pipes=[];
-let score=0;
-let gameRunning=false;
-let img=new Image();
-let bgX=0;
+let birdImg = new Image();
+let bird = { x: 80, y: 200, w: 50, h: 50, velocity: 0 };
 
-// Sounds
-let flapSound = new Audio('https://freesound.org/data/previews/458/458931_838627-lq.mp3');
-let scoreSound = new Audio('https://freesound.org/data/previews/276/276020_5121236-lq.mp3');
-let crashSound = new Audio('https://freesound.org/data/previews/351/351657_5121236-lq.mp3');
+let gravity = 0.5;
+let jump = -8;
 
-// Start Game
+let pipes = [];
+let pipeGap = 160;
+let pipeWidth = 60;
+let pipeSpeed = 2;
+
+let spawnTimer = 0;
+let spawnInterval = 110;
+
+let score = 0;
+let gameRunning = false;
+
+document.getElementById("upload").addEventListener("change", function(e){
+    let file = e.target.files[0];
+    let reader = new FileReader();
+    reader.onload = function(event){
+        birdImg.src = event.target.result;
+    }
+    reader.readAsDataURL(file);
+});
+
 function startGame(){
-  let file=document.getElementById("imgUpload").files[0];
-  if(!file) return alert("Upload image first!");
-  img.src=URL.createObjectURL(file);
-  img.onload=()=>{
-    const aspect=img.width/img.height;
-    bird.width=50;
-    bird.height=bird.width/aspect;
-    document.getElementById("menu").style.display="none";
-    document.getElementById("ui").style.display="block";
+    if(!birdImg.src){
+        alert("Upload image first!");
+        return;
+    }
+
+    document.getElementById("menu").style.display = "none";
+    canvas.style.display = "block";
+
     resetGame();
-    gameRunning=true;
-    loop();
-  };
+    gameRunning = true;
+    gameLoop();
 }
 
-// Reset
 function resetGame(){
-  bird.y=200; bird.vy=0; bird.rotation=0;
-  pipes=[]; score=0;
-  document.getElementById("score").innerText=score;
-  document.getElementById("gameOverScreen").style.display="none";
+    bird.y = 200;
+    bird.velocity = 0;
+    pipes = [];
+    score = 0;
 }
 
-// Game Loop
-function loop(){
-  if(!gameRunning) return;
-
-  // Background
-  ctx.fillStyle="#87CEEB";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  bgX-=1.5;
-  if(bgX<=-canvas.width) bgX=0;
-  ctx.fillStyle="#70C358"; // ground
-  ctx.fillRect(0,canvas.height-50,canvas.width,50);
-
-  // Bird physics
-  bird.vy+=gravity;
-  bird.y+=bird.vy;
-  bird.rotation=Math.min(Math.max(bird.vy/10,-0.5,0.5),0.5);
-
-  // Draw bird with rotation
-  ctx.save();
-  ctx.translate(bird.x+bird.width/2,bird.y+bird.height/2);
-  ctx.rotate(bird.rotation);
-  if(img.complete) ctx.drawImage(img,-bird.width/2,-bird.height/2,bird.width,bird.height);
-  ctx.restore();
-
-  // Pipes
-  if(Math.random()<0.02){
-    let gap=150+Math.random()*100;
-    let top=Math.random()*(canvas.height-gap-100)+50;
-    pipes.push({x:canvas.width,top,gap,passed:false});
-  }
-
-  pipes.forEach(p=>{
-    p.x-=3;
-    ctx.fillStyle="green";
-    ctx.fillRect(p.x,0,50,p.top);
-    ctx.fillRect(p.x,p.top+p.gap,50,canvas.height);
-
-    // Collision
-    if(bird.x< p.x+50 && bird.x+bird.width>p.x && (bird.y< p.top || bird.y+bird.height>p.top+p.gap)){
-      crashSound.play();
-      gameOver();
-    }
-
-    // Score
-    if(p.x+50<bird.x && !p.passed){
-      score++;
-      scoreSound.play();
-      p.passed=true;
-      document.getElementById("score").innerText=score;
-    }
-  });
-
-  // Ground / ceiling
-  if(bird.y+bird.height>canvas.height || bird.y<0){
-    crashSound.play();
-    gameOver();
-  }
-
-  requestAnimationFrame(loop);
+function spawnPipe(){
+    let top = Math.random() * 200 + 50;
+    pipes.push({
+        x: canvas.width,
+        top: top,
+        bottom: top + pipeGap,
+        passed: false
+    });
 }
 
-// Controls
-function jump(){ bird.vy=-8; flapSound.play(); }
-window.addEventListener("click",jump);
-window.addEventListener("touchstart",jump);
-window.addEventListener("keydown",e=>{ if(e.code==="Space") jump(); });
+function update(){
+    // Bird physics
+    bird.velocity += gravity;
+    bird.y += bird.velocity;
 
-// Buttons
-function pauseGame(){ gameRunning=false; }
-function resumeGame(){ if(!gameRunning){ gameRunning=true; loop(); } }
-function restartGame(){ resetGame(); gameRunning=true; loop(); }
-function quitGame(){ window.location.href="/"; }
+    // Spawn pipes
+    spawnTimer++;
+    if(spawnTimer > spawnInterval){
+        spawnPipe();
+        spawnTimer = 0;
+    }
 
-// Game Over
+    // Pipes movement
+    for(let i = pipes.length - 1; i >= 0; i--){
+        pipes[i].x -= pipeSpeed;
+
+        // Score
+        if(!pipes[i].passed && pipes[i].x < bird.x){
+            score++;
+            pipes[i].passed = true;
+        }
+
+        // Remove pipes
+        if(pipes[i].x + pipeWidth < 0){
+            pipes.splice(i, 1);
+        }
+
+        // Collision
+        if(
+            bird.x < pipes[i].x + pipeWidth &&
+            bird.x + bird.w > pipes[i].x &&
+            (bird.y < pipes[i].top || bird.y + bird.h > pipes[i].bottom)
+        ){
+            gameOver();
+        }
+    }
+
+    // Ground / sky collision
+    if(bird.y < 0 || bird.y + bird.h > canvas.height){
+        gameOver();
+    }
+}
+
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Draw bird (fit image correctly)
+    ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
+
+    // Draw pipes
+    ctx.fillStyle = "green";
+    pipes.forEach(p => {
+        ctx.fillRect(p.x, 0, pipeWidth, p.top);
+        ctx.fillRect(p.x, p.bottom, pipeWidth, canvas.height);
+    });
+
+    document.getElementById("score").innerText = score;
+}
+
+function gameLoop(){
+    if(!gameRunning) return;
+
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
 function gameOver(){
-  gameRunning=false;
-  document.getElementById("gameOverScreen").style.display="block";
-  document.getElementById("finalScore").innerText="Score: "+score;
+    gameRunning = false;
+    document.getElementById("gameOver").style.display = "block";
 }
+
+function restartGame(){
+    document.getElementById("gameOver").style.display = "none";
+    resetGame();
+    gameRunning = true;
+    gameLoop();
+}
+
+function quitGame(){
+    location.reload();
+}
+
+// Controls (PC + Mobile)
+document.addEventListener("keydown", e=>{
+    if(e.code === "Space") bird.velocity = jump;
+});
+
+document.addEventListener("click", ()=>{
+    bird.velocity = jump;
+});
+
+document.addEventListener("touchstart", ()=>{
+    bird.velocity = jump;
+});
 </script>
 
 </body>
