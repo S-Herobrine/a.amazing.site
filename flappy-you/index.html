@@ -2,53 +2,51 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flappy You</title>
-
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:Arial;
-}
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#70c5ce;font-family:Arial}
 
-body{
-    overflow:hidden;
-    background:#70c5ce;
-}
-
-canvas{
-    display:block;
-}
+canvas{display:block}
 
 #ui{
-    position:absolute;
-    top:10px;
-    left:10px;
-    color:white;
-    font-size:20px;
-    z-index:10;
+position:absolute;
+top:10px;
+left:10px;
+color:white;
+font-size:20px;
+z-index:10;
 }
 
-#menu, #gameOver{
-    position:absolute;
-    width:100%;
-    height:100%;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    flex-direction:column;
-    background:rgba(0,0,0,0.4);
-    color:white;
-    z-index:20;
+#panel{
+position:absolute;
+top:10px;
+right:10px;
+z-index:10;
+background:rgba(0,0,0,0.4);
+padding:10px;
+color:white;
+border-radius:10px;
+}
+
+#menu,#over{
+position:absolute;
+width:100%;
+height:100%;
+display:flex;
+justify-content:center;
+align-items:center;
+flex-direction:column;
+background:rgba(0,0,0,0.5);
+color:white;
+z-index:20;
 }
 
 button{
-    padding:10px 20px;
-    margin:5px;
-    font-size:18px;
-    cursor:pointer;
+padding:10px 20px;
+margin:5px;
+font-size:16px;
+cursor:pointer;
 }
 </style>
 </head>
@@ -57,177 +55,179 @@ button{
 
 <div id="ui">Score: 0</div>
 
+<div id="panel">
+<h3>Upload Sprites</h3>
+Bird: <input type="file" id="birdImg"><br><br>
+Pipe: <input type="file" id="pipeImg">
+</div>
+
 <div id="menu">
-    <h1>Flappy You</h1>
-    <button onclick="startGame()">Start</button>
+<h1>FLAPPY YOU</h1>
+<button onclick="start()">PLAY</button>
 </div>
 
-<div id="gameOver" style="display:none;">
-    <h1>Game Over 💀</h1>
-    <button onclick="restart()">Restart</button>
+<div id="over" style="display:none">
+<h1>GAME OVER 💀</h1>
+<button onclick="restart()">RESTART</button>
 </div>
 
-<canvas id="game"></canvas>
+<canvas id="c"></canvas>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+const c = document.getElementById("c");
+const x = c.getContext("2d");
 
-let bird, pipes, score, gravity, lift, pipeGap, pipeSpeed, frame;
-let gameRunning = false;
+let birdImg = new Image();
+let pipeImg = new Image();
+
+let bird, pipes, score;
+let gravity, lift, gap, speed;
+let run = false;
 
 function resize(){
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    setMode();
+c.width = window.innerWidth;
+c.height = window.innerHeight;
+mode();
 }
 
-function setMode(){
+function mode(){
+let pc = c.width > c.height;
 
-    // PC / Landscape / Mobile detect
-    if(canvas.width > canvas.height){
-        // PC MODE 😎
-        pipeGap = canvas.height * 0.35;
-        pipeSpeed = 3;
-        gravity = 0.5;
-        lift = -10;
-        birdSize = 50;
-    } else {
-        // MOBILE MODE 📱
-        pipeGap = canvas.height * 0.3;
-        pipeSpeed = 2;
-        gravity = 0.6;
-        lift = -9;
-        birdSize = 40;
-    }
+gravity = pc ? 0.5 : 0.6;
+lift = pc ? -10 : -9;
+gap = pc ? c.height*0.35 : c.height*0.28;
+speed = pc ? 3 : 2;
 
-    bird = {
-        x: canvas.width / 4,
-        y: canvas.height / 2,
-        w: birdSize,
-        h: birdSize,
-        velocity: 0
-    };
+bird = {
+x: c.width/4,
+y: c.height/2,
+w: 50,
+h: 50,
+v:0
+};
 
-    pipes = [];
-    score = 0;
-    frame = 0;
-
-    document.getElementById("ui").innerText = "Score: 0";
+pipes = [];
+score = 0;
+document.getElementById("ui").innerText="Score: 0";
 }
 
 function drawBird(){
-    ctx.fillStyle = "yellow";
-    ctx.fillRect(bird.x, bird.y, bird.w, bird.h);
+if(birdImg.src)
+x.drawImage(birdImg,bird.x,bird.y,bird.w,bird.h);
+else{
+x.fillStyle="yellow";
+x.fillRect(bird.x,bird.y,bird.w,bird.h);
+}
 }
 
 function updateBird(){
-    bird.velocity += gravity;
-    bird.y += bird.velocity;
+bird.v += gravity;
+bird.y += bird.v;
 
-    if(bird.y + bird.h > canvas.height){
-        gameOver();
-    }
-    if(bird.y < 0){
-        bird.y = 0;
-        bird.velocity = 0;
-    }
+if(bird.y<0) bird.y=0;
+if(bird.y+bird.h>c.height) gameOver();
 }
 
 function spawnPipe(){
-    let margin = 60;
-    let top = Math.random() * (canvas.height - pipeGap - margin*2) + margin;
+let top = Math.random()*(c.height-gap-100)+50;
 
-    pipes.push({
-        x: canvas.width,
-        top: top,
-        bottom: top + pipeGap,
-        passed:false
-    });
+pipes.push({
+x:c.width,
+top:top,
+passed:false
+});
 }
 
 function drawPipes(){
-    ctx.fillStyle = "green";
-
-    pipes.forEach(p => {
-        ctx.fillRect(p.x, 0, 80, p.top);
-        ctx.fillRect(p.x, p.bottom, 80, canvas.height - p.bottom);
-    });
+pipes.forEach(p=>{
+if(pipeImg.src){
+x.drawImage(pipeImg,p.x,0,80,p.top);
+x.drawImage(pipeImg,p.x,p.top+gap,80,c.height);
+}else{
+x.fillStyle="green";
+x.fillRect(p.x,0,80,p.top);
+x.fillRect(p.x,p.top+gap,80,c.height);
+}
+});
 }
 
 function updatePipes(){
-    pipes.forEach(p => {
-        p.x -= pipeSpeed;
+pipes.forEach(p=>{
+p.x -= speed;
 
-        // score
-        if(!p.passed && p.x + 80 < bird.x){
-            score++;
-            p.passed = true;
-            document.getElementById("ui").innerText = "Score: " + score;
-        }
+if(!p.passed && p.x < bird.x){
+score++;
+p.passed=true;
+document.getElementById("ui").innerText="Score: "+score;
+}
 
-        // collision
-        if(
-            bird.x < p.x + 80 &&
-            bird.x + bird.w > p.x &&
-            (bird.y < p.top || bird.y + bird.h > p.bottom)
-        ){
-            gameOver();
-        }
-    });
+if(
+bird.x < p.x+80 &&
+bird.x+bird.w > p.x &&
+(bird.y < p.top || bird.y+bird.h > p.top+gap)
+){
+gameOver();
+}
+});
 
-    pipes = pipes.filter(p => p.x > -100);
+pipes = pipes.filter(p=>p.x>-100);
 }
 
 function loop(){
-    if(!gameRunning) return;
+if(!run) return;
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+x.clearRect(0,0,c.width,c.height);
 
-    updateBird();
-    drawBird();
+updateBird();
+drawBird();
 
-    if(frame % 100 === 0){
-        spawnPipe();
-    }
+if(frame()%120===0) spawnPipe();
 
-    updatePipes();
-    drawPipes();
+updatePipes();
+drawPipes();
 
-    frame++;
-    requestAnimationFrame(loop);
+requestAnimationFrame(loop);
 }
 
-function startGame(){
-    document.getElementById("menu").style.display = "none";
-    document.getElementById("gameOver").style.display = "none";
-    gameRunning = true;
-    resize();
-    loop();
+function frame(){
+return Math.floor(performance.now()/10);
 }
 
-function gameOver(){
-    gameRunning = false;
-    document.getElementById("gameOver").style.display = "flex";
+function start(){
+document.getElementById("menu").style.display="none";
+document.getElementById("over").style.display="none";
+run=true;
+resize();
+loop();
 }
 
 function restart(){
-    startGame();
+start();
 }
 
-window.addEventListener("resize", resize);
+function gameOver(){
+run=false;
+document.getElementById("over").style.display="flex";
+}
 
-window.addEventListener("keydown", e=>{
-    if(e.code === "Space"){
-        bird.velocity = lift;
-    }
+// upload bird
+document.getElementById("birdImg").onchange=(e)=>{
+birdImg.src = URL.createObjectURL(e.target.files[0]);
+};
+
+// upload pipe
+document.getElementById("pipeImg").onchange=(e)=>{
+pipeImg.src = URL.createObjectURL(e.target.files[0]);
+};
+
+window.addEventListener("resize",resize);
+
+window.addEventListener("keydown",e=>{
+if(e.code==="Space") bird.v = lift;
 });
 
-window.addEventListener("click", ()=>{
-    if(gameRunning){
-        bird.velocity = lift;
-    }
+window.addEventListener("click",()=>{
+if(run) bird.v = lift;
 });
 
 resize();
