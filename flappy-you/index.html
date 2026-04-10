@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Flappy GO 😎</title>
+<title>Flappy GO ULTRA 😎🔥</title>
 
 <style>
 body {
@@ -10,18 +10,19 @@ body {
     background: #70c5ce;
     font-family: Arial;
     text-align: center;
+    overflow: hidden;
 }
 
 canvas {
     display: none;
     margin: auto;
-    background: #70c5ce;
+    background: linear-gradient(#70c5ce, #ffffff);
 }
 
 #menu, #gameOver {
     position: absolute;
     width: 100%;
-    top: 40%;
+    top: 35%;
 }
 
 button {
@@ -31,22 +32,23 @@ button {
     cursor: pointer;
 }
 
-#score {
+#score, #highscore {
     position: absolute;
-    top: 10px;
     left: 10px;
-    font-size: 24px;
     color: white;
 }
+
+#score { top: 10px; font-size: 24px; }
+#highscore { top: 40px; font-size: 16px; }
 </style>
 </head>
 
 <body>
 
 <div id="menu">
-    <h1>Flappy GO 😎</h1>
+    <h1>Flappy GO ULTRA 😎🔥</h1>
     <input type="file" id="upload"><br><br>
-    <button onclick="startGame()">Start</button>
+    <button onclick="startGame()">Start Game</button>
 </div>
 
 <div id="gameOver" style="display:none;">
@@ -56,6 +58,7 @@ button {
 </div>
 
 <div id="score">0</div>
+<div id="highscore">Best: 0</div>
 
 <canvas id="gameCanvas"></canvas>
 
@@ -68,18 +71,30 @@ let birdImg = new Image();
 let bird = { x: 80, y: 200, w: 50, h: 50, velocity: 0 };
 
 let gravity = 0.5;
-let jump = -8;
+let jump = -9;
 
 let pipes = [];
-let pipeGap, pipeWidth = 60, pipeSpeed;
-let spawnTimer = 0, spawnInterval;
+let pipeGap, pipeWidth = 60, pipeSpeed, pipeDistance;
 
 let score = 0;
-let gameRunning = false;
+let highScore = localStorage.getItem("flappyHigh") || 0;
 
-// 📱💻 RESPONSIVE CANVAS
-function resizeCanvas() {
-    if (window.innerWidth > 700) {
+let gameRunning = false;
+let paused = false;
+
+// 🔊 SOUND
+let jumpSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+let hitSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+
+// ☁️ CLOUDS
+let clouds = [];
+for(let i=0;i<3;i++){
+    clouds.push({x: Math.random()*800, y: Math.random()*200});
+}
+
+// 📱💻 RESPONSIVE
+function resizeCanvas(){
+    if(window.innerWidth > 700){
         canvas.width = 900;
         canvas.height = 500;
     } else {
@@ -88,24 +103,21 @@ function resizeCanvas() {
     }
 }
 
-// 🎮 GAME MODE SETTINGS
-function setGameMode() {
-    if (canvas.width > canvas.height) {
-        pipeGap = 180;
-        spawnInterval = 140;
+function setGameMode(){
+    if(canvas.width > canvas.height){
+        pipeGap = 200;
         pipeSpeed = 3;
-        bird.w = 60;
-        bird.h = 60;
+        pipeDistance = 400;
+        bird.w = 60; bird.h = 60;
     } else {
         pipeGap = 150;
-        spawnInterval = 110;
         pipeSpeed = 2;
-        bird.w = 50;
-        bird.h = 50;
+        pipeDistance = 280;
+        bird.w = 50; bird.h = 50;
     }
 }
 
-window.addEventListener("resize", () => {
+window.addEventListener("resize", ()=>{
     resizeCanvas();
     setGameMode();
 });
@@ -132,20 +144,23 @@ function startGame(){
     document.getElementById("menu").style.display = "none";
     canvas.style.display = "block";
 
+    document.getElementById("highscore").innerText = "Best: " + highScore;
+
     resetGame();
     gameRunning = true;
+    paused = false;
     gameLoop();
 }
 
 function resetGame(){
+    bird.x = canvas.width * 0.2;
     bird.y = canvas.height / 2;
     bird.velocity = 0;
     pipes = [];
     score = 0;
-    spawnTimer = 0;
 }
 
-// 🟩 PIPE SYSTEM (NO BUG)
+// 🟩 PIPE SPAWN (FIXED)
 function spawnPipe(){
     let top = Math.random() * (canvas.height - pipeGap - 100) + 50;
 
@@ -158,16 +173,17 @@ function spawnPipe(){
 }
 
 function update(){
+    if(paused) return;
+
     bird.velocity += gravity;
     bird.y += bird.velocity;
 
-    spawnTimer++;
-    if(spawnTimer > spawnInterval){
+    // spawn by distance
+    if(pipes.length === 0 || pipes[pipes.length-1].x < canvas.width - pipeDistance){
         spawnPipe();
-        spawnTimer = 0;
     }
 
-    for(let i = pipes.length - 1; i >= 0; i--){
+    for(let i=pipes.length-1;i>=0;i--){
         let p = pipes[i];
         p.x -= pipeSpeed;
 
@@ -177,10 +193,9 @@ function update(){
         }
 
         if(p.x + pipeWidth < 0){
-            pipes.splice(i, 1);
+            pipes.splice(i,1);
         }
 
-        // COLLISION
         if(
             bird.x < p.x + pipeWidth &&
             bird.x + bird.w > p.x &&
@@ -193,15 +208,31 @@ function update(){
     if(bird.y < 0 || bird.y + bird.h > canvas.height){
         gameOver();
     }
+
+    // clouds move
+    clouds.forEach(c=>{
+        c.x -= 0.5;
+        if(c.x < -50) c.x = canvas.width;
+    });
 }
 
 function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
+    // ☁️ clouds
+    ctx.fillStyle = "white";
+    clouds.forEach(c=>{
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 20, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    // bird
     ctx.drawImage(birdImg, bird.x, bird.y, bird.w, bird.h);
 
+    // pipes
     ctx.fillStyle = "green";
-    pipes.forEach(p => {
+    pipes.forEach(p=>{
         ctx.fillRect(p.x, 0, pipeWidth, p.top);
         ctx.fillRect(p.x, p.bottom, pipeWidth, canvas.height);
     });
@@ -218,7 +249,13 @@ function gameLoop(){
 }
 
 function gameOver(){
+    hitSound.play();
     gameRunning = false;
+
+    if(score > highScore){
+        localStorage.setItem("flappyHigh", score);
+    }
+
     document.getElementById("gameOver").style.display = "block";
 }
 
@@ -235,15 +272,20 @@ function quitGame(){
 
 // 🎮 CONTROLS
 function jumpAction(){
-    bird.velocity = jump;
+    if(!paused){
+        bird.velocity = jump;
+        jumpSound.play();
+    }
 }
 
 document.addEventListener("keydown", e=>{
     if(e.code === "Space") jumpAction();
+    if(e.key === "p") paused = !paused;
 });
 
 document.addEventListener("click", jumpAction);
 document.addEventListener("touchstart", jumpAction);
+
 </script>
 
 </body>
