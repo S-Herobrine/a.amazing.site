@@ -1,160 +1,263 @@
 <!DOCTYPE html>
 <html lang="en">
-<link rel="icon" href="favicon.png" type="image/png">
 <head>
 <meta charset="UTF-8">
-<title>My Game Hub 😎</title>
+<title>Amazing Site Of Games</title>
+<link rel="icon" href="favicon.png">
 
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0f0f0f;
-  color: white;
+body{
+margin:0;
+font-family:Arial;
+background:#0f0f0f;
+color:white;
 }
 
-/* Header */
-.header {
-  padding: 20px;
-  text-align: center;
-  font-size: 28px;
-  font-weight: bold;
-  background: #111;
-  box-shadow: 0 2px 10px #000;
+/* NAVBAR */
+.navbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:15px 25px;
+background:#111;
+box-shadow:0 2px 10px #000;
 }
 
-/* Search bar */
-.search {
-  text-align: center;
-  margin: 20px;
+.logo{
+font-size:22px;
+font-weight:bold;
 }
 
-.search input {
-  width: 60%;
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
-  font-size: 16px;
+.nav-right button{
+margin-left:10px;
 }
 
-/* Grid */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
-  padding: 20px;
+/* SEARCH */
+.search{
+text-align:center;
+margin:20px;
 }
 
-/* Cards */
-.card {
-  background: #1a1a1a;
-  border-radius: 15px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: 0.3s;
-  box-shadow: 0 0 10px #000;
+.search input{
+width:60%;
+padding:12px;
+border-radius:20px;
+border:none;
+font-size:16px;
 }
 
-.card:hover {
-  transform: translateY(-10px) scale(1.05);
-  box-shadow: 0 0 20px #00ffcc;
+/* ROW */
+.row{
+padding:20px;
 }
 
-/* Thumbnail */
-.thumb {
-  height: 120px;
-  background: linear-gradient(45deg, #00ffcc, #0066ff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
+.row h2{
+margin-bottom:10px;
 }
 
-/* Title */
-.title {
-  padding: 10px;
-  text-align: center;
+/* SCROLL ROW */
+.scroll{
+display:flex;
+overflow-x:auto;
+gap:15px;
+padding-bottom:10px;
 }
 
-/* Buttons */
-.controls {
-  text-align: center;
-  margin: 20px;
+.scroll::-webkit-scrollbar{
+height:8px;
+}
+.scroll::-webkit-scrollbar-thumb{
+background:#00ffcc;
+border-radius:10px;
 }
 
-button {
-  padding: 10px 15px;
-  margin: 5px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  background: #00ffcc;
-  font-weight: bold;
-  transition: 0.2s;
+/* CARD */
+.card{
+min-width:180px;
+background:rgba(255,255,255,0.05);
+backdrop-filter:blur(10px);
+border-radius:15px;
+cursor:pointer;
+transition:0.3s;
+box-shadow:0 0 10px #000;
 }
 
-button:hover {
-  background: #00ccaa;
+.card:hover{
+transform:scale(1.08);
+box-shadow:0 0 20px #00ffcc;
+}
+
+.thumb{
+height:120px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:30px;
+background:linear-gradient(45deg,#00ffcc,#0066ff);
+}
+
+.title{
+padding:10px;
+text-align:center;
+}
+
+/* BUTTON */
+button{
+padding:8px 14px;
+border:none;
+border-radius:10px;
+cursor:pointer;
+background:#00ffcc;
+font-weight:bold;
+}
+
+button:hover{
+background:#00ccaa;
+}
+
+/* MODAL */
+.modal{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.7);
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+.hidden{display:none;}
+
+.modal-box{
+background:#111;
+padding:20px;
+border-radius:15px;
+text-align:center;
+}
+
+.modal-box input{
+padding:10px;
+margin:10px;
+width:200px;
 }
 </style>
-
 </head>
 
 <body>
 
-<div class="header">🔥 Amazing Site Games 🔥</div>
+<!-- NAVBAR -->
+<div class="navbar">
+<div class="logo">🔥 Amazing Games</div>
 
+<div class="nav-right">
+<span id="user"></span>
+<button onclick="openLogin()">Login</button>
+<button onclick="alert('Multiplayer coming soon 😈')">Multiplayer</button>
+</div>
+</div>
+
+<!-- SEARCH -->
 <div class="search">
-  <input type="text" id="search" placeholder="Search games..." onkeyup="searchGame()">
+<input type="text" id="search" placeholder="Search games..." onkeyup="searchGame()">
 </div>
 
-<div class="controls">
-  <button onclick="randomGame()">🎲 Random Game</button>
+<!-- RANDOM -->
+<div style="text-align:center;">
+<button onclick="randomGame()">🎲 Random Game</button>
 </div>
 
-<div class="grid" id="gameGrid">
+<!-- GAME ROW -->
+<div class="row">
+<h2>🔥 Popular Games</h2>
 
-  <div class="card" data-name="useless text" onclick="go('useless-text/')">
-    <div class="thumb">😎</div>
-    <div class="title">Useless Text</div>
-  </div>
+<div class="scroll" id="gameRow">
 
- <div class="card" data-name="flappy you" onclick="go('flappy-you/')">
-  <div class="thumb">🐤</div>
-  <div class="title">Flappy You</div>
+<!-- 10 GAMES -->
+<div class="card" data-name="useless text" onclick="go('useless-text/')">
+<div class="thumb">😎</div>
+<div class="title">Useless Text</div>
 </div>
 
-  <div class="card" data-name="eagler craft" onclick="go('eagler-craft/')">
-  <div class="thumb">⛏️</div>
-  <div class="title">Eagler Craft</div>
+<div class="card" data-name="flappy you" onclick="go('flappy-you/')">
+<div class="thumb">🐤</div>
+<div class="title">Flappy You</div>
 </div>
 
+<div class="card" data-name="eagler craft" onclick="go('eagler-craft/')">
+<div class="thumb">⛏️</div>
+<div class="title">Eagler Craft</div>
+</div>
+
+<!-- DUPLICATE TO MAKE 10 -->
+<div class="card" data-name="game4"><div class="thumb">🎮</div><div class="title">Game 4</div></div>
+<div class="card" data-name="game5"><div class="thumb">🎮</div><div class="title">Game 5</div></div>
+<div class="card" data-name="game6"><div class="thumb">🎮</div><div class="title">Game 6</div></div>
+<div class="card" data-name="game7"><div class="thumb">🎮</div><div class="title">Game 7</div></div>
+<div class="card" data-name="game8"><div class="thumb">🎮</div><div class="title">Game 8</div></div>
+<div class="card" data-name="game9"><div class="thumb">🎮</div><div class="title">Game 9</div></div>
+<div class="card" data-name="game10"><div class="thumb">🎮</div><div class="title">Game 10</div></div>
+
+</div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="modal hidden">
+<div class="modal-box">
+<h2>Login</h2>
+<input type="text" id="username" placeholder="Enter name">
+<br>
+<button onclick="login()">Login</button>
+<button onclick="closeLogin()">Close</button>
+</div>
 </div>
 
 <script>
 
-// Navigate
-function go(path) {
-  window.location.href = path;
+// NAV
+function go(path){
+window.location.href=path;
 }
 
-// Random game
-function randomGame() {
-  let cards = document.querySelectorAll(".card");
-  let r = cards[Math.floor(Math.random() * cards.length)];
-  r.click();
+// RANDOM
+function randomGame(){
+let cards=document.querySelectorAll(".card");
+cards[Math.floor(Math.random()*cards.length)].click();
 }
 
-// Search
-function searchGame() {
-  let input = document.getElementById("search").value.toLowerCase();
-  let cards = document.querySelectorAll(".card");
-
-  cards.forEach(card => {
-    let name = card.getAttribute("data-name");
-    card.style.display = name.includes(input) ? "block" : "none";
-  });
+// SEARCH
+function searchGame(){
+let input=document.getElementById("search").value.toLowerCase();
+document.querySelectorAll(".card").forEach(c=>{
+c.style.display=c.dataset.name.includes(input)?"block":"none";
+});
 }
+
+// LOGIN SYSTEM
+function openLogin(){
+loginModal.classList.remove("hidden");
+}
+
+function closeLogin(){
+loginModal.classList.add("hidden");
+}
+
+function login(){
+let name=document.getElementById("username").value;
+localStorage.setItem("user",name);
+updateUser();
+closeLogin();
+}
+
+function updateUser(){
+let u=localStorage.getItem("user");
+if(u){
+user.innerText="👤 "+u;
+}
+}
+
+updateUser();
 
 </script>
 
