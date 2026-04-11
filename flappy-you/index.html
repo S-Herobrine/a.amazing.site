@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Flappy You</title>
@@ -10,16 +10,7 @@ body{overflow:hidden;background:#70c5ce}
 
 canvas{display:block}
 
-#ui{
-position:absolute;
-top:10px;
-left:10px;
-color:white;
-font-size:20px;
-z-index:10;
-}
-
-#menu,#shop,#over{
+.screen{
 position:absolute;
 width:100%;
 height:100%;
@@ -32,94 +23,130 @@ color:white;
 z-index:20;
 }
 
+.hidden{display:none}
+
+#ui{
+position:absolute;
+top:10px;
+left:10px;
+color:white;
+z-index:10;
+}
+
+#buttons{
+position:absolute;
+top:10px;
+right:10px;
+z-index:10;
+}
+
 button{
 padding:10px 20px;
 margin:5px;
-font-size:18px;
+font-size:16px;
 cursor:pointer;
 }
-
-.hidden{display:none}
 </style>
 </head>
 
 <body>
 
-<div id="ui">
-Score: 0<br>
-Coins: 0
+<div id="ui">Score: 0<br>Coins: 0</div>
+
+<div id="buttons">
+<button onclick="pauseGame()">Pause</button>
+<button onclick="restart()">Restart</button>
 </div>
 
-<div id="menu">
+<div id="menu" class="screen">
 <h1>FLAPPY YOU</h1>
-<button onclick="start()">Play</button>
-<button onclick="openShop()">Shop</button>
+<button onclick="showGame()">Play</button>
+<button onclick="showShop()">Shop</button>
 <input type="file" id="upload">
 </div>
 
-<div id="shop" class="hidden">
+<div id="shop" class="screen hidden">
 <h2>Shop 🛒</h2>
-<button onclick="buySlow()">Slow Pipes (10 coins)</button>
-<button onclick="buyBigGap()">Big Gap (15 coins)</button>
-<button onclick="closeShop()">Back</button>
+<button onclick="buySlow()">Slow Pipes (10)</button>
+<button onclick="buyGap()">Big Gap (15)</button>
+<button onclick="showMenu()">Back</button>
 </div>
 
-<div id="over" class="hidden">
+<div id="gameOver" class="screen hidden">
 <h1>Game Over 💀</h1>
 <button onclick="restart()">Restart</button>
-<button onclick="backMenu()">Menu</button>
+<button onclick="showMenu()">Menu</button>
 </div>
-
-<button onclick="pauseGame()" style="position:absolute;top:10px;right:10px;">Pause</button>
-<button onclick="restart()" style="position:absolute;top:60px;right:10px;">Restart</button>
 
 <canvas id="c"></canvas>
 
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
 
-let birdImg=new Image();
+let birdImg = new Image();
 
-let bird,pipes,score,coins=0;
-let gravity,lift,gap,speed;
-let running=false,paused=false,infinite=false;
+let bird, pipes, score=0, coins=0;
+let gravity, lift, gap, speed;
+let running=false, paused=false;
 
-let upgrades={
-slow:false,
-bigGap:false
-};
+let upgrades={slow:false,gap:false};
 
+// ✅ SCREEN CONTROL (FIX)
+function hideAll(){
+document.getElementById("menu").classList.add("hidden");
+document.getElementById("shop").classList.add("hidden");
+document.getElementById("gameOver").classList.add("hidden");
+}
+
+function showMenu(){
+hideAll();
+document.getElementById("menu").classList.remove("hidden");
+running=false;
+}
+
+function showShop(){
+hideAll();
+document.getElementById("shop").classList.remove("hidden");
+running=false;
+}
+
+function showGame(){
+hideAll();
+running=true;
+resize();
+loop();
+}
+
+// 🎮 GAME SETUP
 function resize(){
 c.width=window.innerWidth;
 c.height=window.innerHeight;
-mode();
-}
 
-function mode(){
 let pc=c.width>c.height;
 
 gravity=pc?0.5:0.6;
 lift=pc?-10:-9;
-gap=pc?c.height*0.3:c.height*0.28;
+gap=pc?c.height*0.3:c.height*0.25;
 speed=pc?3:2;
 
-if(upgrades.bigGap) gap*=1.3;
 if(upgrades.slow) speed*=0.7;
+if(upgrades.gap) gap*=1.3;
 
-bird={
-x:c.width/4,
-y:c.height/2,
-w:50,h:50,v:0
-};
-
+bird={x:c.width/4,y:c.height/2,w:50,h:50,v:0};
 pipes=[];
 score=0;
+updateUI();
 }
 
+function updateUI(){
+document.getElementById("ui").innerHTML=
+"Score: "+score+"<br>Coins: "+coins;
+}
+
+// 🐦 BIRD
 function drawBird(){
-if(birdImg.src)
-ctx.drawImage(birdImg,bird.x,bird.y,bird.w,bird.h);
+if(birdImg.src) ctx.drawImage(birdImg,bird.x,bird.y,bird.w,bird.h);
 else{
 ctx.fillStyle="yellow";
 ctx.fillRect(bird.x,bird.y,bird.w,bird.h);
@@ -132,14 +159,11 @@ if(paused) return;
 bird.v+=gravity;
 bird.y+=bird.v;
 
-if(bird.y+bird.h>c.height){
-if(!infinite) gameOver();
-else bird.y=c.height-bird.h;
-}
-
 if(bird.y<0) bird.y=0;
+if(bird.y+bird.h>c.height) gameOver();
 }
 
+// 🟩 PIPES
 function spawnPipe(){
 let top=Math.random()*(c.height-gap-100)+50;
 pipes.push({x:c.width,top:top,passed:false});
@@ -161,7 +185,7 @@ bird.x<p.x+80 &&
 bird.x+bird.w>p.x &&
 (bird.y<p.top || bird.y+bird.h>p.top+gap)
 ){
-if(!infinite) gameOver();
+gameOver();
 }
 });
 
@@ -176,6 +200,7 @@ ctx.fillRect(p.x,p.top+gap,80,c.height);
 });
 }
 
+// 🔄 LOOP
 function loop(){
 if(!running) return;
 
@@ -192,66 +217,26 @@ drawPipes();
 requestAnimationFrame(loop);
 }
 
-function start(){
-document.getElementById("menu").classList.add("hidden");
-document.getElementById("over").classList.add("hidden");
-
-running=true;
-paused=false;
-resize();
-loop();
-}
+// 🎮 CONTROLS
+function pauseGame(){paused=!paused}
+function restart(){showGame()}
 
 function gameOver(){
 running=false;
-document.getElementById("over").classList.remove("hidden");
+hideAll();
+document.getElementById("gameOver").classList.remove("hidden");
 }
 
-function restart(){
-start();
-}
+// 🛒 SHOP
+function buySlow(){if(coins>=10){coins-=10;upgrades.slow=true;updateUI();}}
+function buyGap(){if(coins>=15){coins-=15;upgrades.gap=true;updateUI();}}
 
-function backMenu(){
-document.getElementById("menu").classList.remove("hidden");
-document.getElementById("over").classList.add("hidden");
-running=false;
-}
-
-function pauseGame(){
-paused=!paused;
-}
-
-// SHOP
-function openShop(){
-document.getElementById("menu").classList.add("hidden");
-document.getElementById("shop").classList.remove("hidden");
-}
-
-function closeShop(){
-document.getElementById("shop").classList.add("hidden");
-document.getElementById("menu").classList.remove("hidden");
-}
-
-function buySlow(){
-if(coins>=10){coins-=10;upgrades.slow=true;updateUI();}
-}
-
-function buyBigGap(){
-if(coins>=15){coins-=15;upgrades.bigGap=true;updateUI();}
-}
-
-// UI
-function updateUI(){
-document.getElementById("ui").innerHTML=
-"Score: "+score+"<br>Coins: "+coins;
-}
-
-// Upload
+// 📷 UPLOAD
 document.getElementById("upload").onchange=(e)=>{
 birdImg.src=URL.createObjectURL(e.target.files[0]);
 };
 
-// Controls
+// ⌨️ KEYS
 window.addEventListener("keydown",e=>{
 if(e.code==="Space") bird.v=lift;
 if(e.key==="p") pauseGame();
@@ -264,7 +249,8 @@ if(running && !paused) bird.v=lift;
 
 window.addEventListener("resize",resize);
 
-resize();
+// start at menu
+showMenu();
 </script>
 
 </body>
