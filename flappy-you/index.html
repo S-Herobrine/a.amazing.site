@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Flappy You</title>
+<title>Flappy You INFINITE GOD MODE</title>
+
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{overflow:hidden;background:#70c5ce;font-family:Arial}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
+body{overflow:hidden;background:#70c5ce}
 
 canvas{display:block}
 
@@ -18,18 +19,7 @@ font-size:20px;
 z-index:10;
 }
 
-#panel{
-position:absolute;
-top:10px;
-right:10px;
-z-index:10;
-background:rgba(0,0,0,0.4);
-padding:10px;
-color:white;
-border-radius:10px;
-}
-
-#menu,#over{
+#menu,#shop,#over{
 position:absolute;
 width:100%;
 height:100%;
@@ -45,143 +35,156 @@ z-index:20;
 button{
 padding:10px 20px;
 margin:5px;
-font-size:16px;
+font-size:18px;
 cursor:pointer;
 }
+
+.hidden{display:none}
 </style>
 </head>
 
 <body>
 
-<div id="ui">Score: 0</div>
-
-<div id="panel">
-<h3>Upload Sprites</h3>
-Bird: <input type="file" id="birdImg"><br><br>
-Pipe: <input type="file" id="pipeImg">
+<div id="ui">
+Score: 0<br>
+Coins: 0
 </div>
 
 <div id="menu">
-<h1>FLAPPY YOU</h1>
-<button onclick="start()">PLAY</button>
+<h1>FLAPPY YOU GOD MODE 😈</h1>
+<button onclick="start()">Play</button>
+<button onclick="openShop()">Shop</button>
+<input type="file" id="upload">
 </div>
 
-<div id="over" style="display:none">
-<h1>GAME OVER 💀</h1>
-<button onclick="restart()">RESTART</button>
+<div id="shop" class="hidden">
+<h2>Shop 🛒</h2>
+<button onclick="buySlow()">Slow Pipes (10 coins)</button>
+<button onclick="buyBigGap()">Big Gap (15 coins)</button>
+<button onclick="closeShop()">Back</button>
 </div>
+
+<div id="over" class="hidden">
+<h1>Game Over 💀</h1>
+<button onclick="restart()">Restart</button>
+<button onclick="backMenu()">Menu</button>
+</div>
+
+<button onclick="pauseGame()" style="position:absolute;top:10px;right:10px;">Pause</button>
+<button onclick="restart()" style="position:absolute;top:60px;right:10px;">Restart</button>
 
 <canvas id="c"></canvas>
 
 <script>
-const c = document.getElementById("c");
-const x = c.getContext("2d");
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
 
-let birdImg = new Image();
-let pipeImg = new Image();
+let birdImg=new Image();
 
-let bird, pipes, score;
-let gravity, lift, gap, speed;
-let run = false;
+let bird,pipes,score,coins=0;
+let gravity,lift,gap,speed;
+let running=false,paused=false,infinite=false;
+
+let upgrades={
+slow:false,
+bigGap:false
+};
 
 function resize(){
-c.width = window.innerWidth;
-c.height = window.innerHeight;
+c.width=window.innerWidth;
+c.height=window.innerHeight;
 mode();
 }
 
 function mode(){
-let pc = c.width > c.height;
+let pc=c.width>c.height;
 
-gravity = pc ? 0.5 : 0.6;
-lift = pc ? -10 : -9;
-gap = pc ? c.height*0.35 : c.height*0.28;
-speed = pc ? 3 : 2;
+gravity=pc?0.5:0.6;
+lift=pc?-10:-9;
+gap=pc?c.height*0.3:c.height*0.28;
+speed=pc?3:2;
 
-bird = {
-x: c.width/4,
-y: c.height/2,
-w: 50,
-h: 50,
-v:0
+if(upgrades.bigGap) gap*=1.3;
+if(upgrades.slow) speed*=0.7;
+
+bird={
+x:c.width/4,
+y:c.height/2,
+w:50,h:50,v:0
 };
 
-pipes = [];
-score = 0;
-document.getElementById("ui").innerText="Score: 0";
+pipes=[];
+score=0;
 }
 
 function drawBird(){
 if(birdImg.src)
-x.drawImage(birdImg,bird.x,bird.y,bird.w,bird.h);
+ctx.drawImage(birdImg,bird.x,bird.y,bird.w,bird.h);
 else{
-x.fillStyle="yellow";
-x.fillRect(bird.x,bird.y,bird.w,bird.h);
+ctx.fillStyle="yellow";
+ctx.fillRect(bird.x,bird.y,bird.w,bird.h);
 }
 }
 
 function updateBird(){
-bird.v += gravity;
-bird.y += bird.v;
+if(paused) return;
+
+bird.v+=gravity;
+bird.y+=bird.v;
+
+if(bird.y+bird.h>c.height){
+if(!infinite) gameOver();
+else bird.y=c.height-bird.h;
+}
 
 if(bird.y<0) bird.y=0;
-if(bird.y+bird.h>c.height) gameOver();
 }
 
 function spawnPipe(){
-let top = Math.random()*(c.height-gap-100)+50;
-
-pipes.push({
-x:c.width,
-top:top,
-passed:false
-});
-}
-
-function drawPipes(){
-pipes.forEach(p=>{
-if(pipeImg.src){
-x.drawImage(pipeImg,p.x,0,80,p.top);
-x.drawImage(pipeImg,p.x,p.top+gap,80,c.height);
-}else{
-x.fillStyle="green";
-x.fillRect(p.x,0,80,p.top);
-x.fillRect(p.x,p.top+gap,80,c.height);
-}
-});
+let top=Math.random()*(c.height-gap-100)+50;
+pipes.push({x:c.width,top:top,passed:false});
 }
 
 function updatePipes(){
 pipes.forEach(p=>{
-p.x -= speed;
+p.x-=speed;
 
-if(!p.passed && p.x < bird.x){
+if(!p.passed && p.x<bird.x){
 score++;
+coins++;
 p.passed=true;
-document.getElementById("ui").innerText="Score: "+score;
+updateUI();
 }
 
 if(
-bird.x < p.x+80 &&
-bird.x+bird.w > p.x &&
-(bird.y < p.top || bird.y+bird.h > p.top+gap)
+bird.x<p.x+80 &&
+bird.x+bird.w>p.x &&
+(bird.y<p.top || bird.y+bird.h>p.top+gap)
 ){
-gameOver();
+if(!infinite) gameOver();
 }
 });
 
-pipes = pipes.filter(p=>p.x>-100);
+pipes=pipes.filter(p=>p.x>-100);
+}
+
+function drawPipes(){
+ctx.fillStyle="green";
+pipes.forEach(p=>{
+ctx.fillRect(p.x,0,80,p.top);
+ctx.fillRect(p.x,p.top+gap,80,c.height);
+});
 }
 
 function loop(){
-if(!run) return;
+if(!running) return;
 
-x.clearRect(0,0,c.width,c.height);
+ctx.clearRect(0,0,c.width,c.height);
 
 updateBird();
 drawBird();
 
-if(frame()%120===0) spawnPipe();
+if(performance.now()%120<16) spawnPipe();
 
 updatePipes();
 drawPipes();
@@ -189,46 +192,77 @@ drawPipes();
 requestAnimationFrame(loop);
 }
 
-function frame(){
-return Math.floor(performance.now()/10);
-}
-
 function start(){
-document.getElementById("menu").style.display="none";
-document.getElementById("over").style.display="none";
-run=true;
+document.getElementById("menu").classList.add("hidden");
+document.getElementById("over").classList.add("hidden");
+
+running=true;
+paused=false;
 resize();
 loop();
+}
+
+function gameOver(){
+running=false;
+document.getElementById("over").classList.remove("hidden");
 }
 
 function restart(){
 start();
 }
 
-function gameOver(){
-run=false;
-document.getElementById("over").style.display="flex";
+function backMenu(){
+document.getElementById("menu").classList.remove("hidden");
+document.getElementById("over").classList.add("hidden");
+running=false;
 }
 
-// upload bird
-document.getElementById("birdImg").onchange=(e)=>{
-birdImg.src = URL.createObjectURL(e.target.files[0]);
+function pauseGame(){
+paused=!paused;
+}
+
+// SHOP
+function openShop(){
+document.getElementById("menu").classList.add("hidden");
+document.getElementById("shop").classList.remove("hidden");
+}
+
+function closeShop(){
+document.getElementById("shop").classList.add("hidden");
+document.getElementById("menu").classList.remove("hidden");
+}
+
+function buySlow(){
+if(coins>=10){coins-=10;upgrades.slow=true;updateUI();}
+}
+
+function buyBigGap(){
+if(coins>=15){coins-=15;upgrades.bigGap=true;updateUI();}
+}
+
+// UI
+function updateUI(){
+document.getElementById("ui").innerHTML=
+"Score: "+score+"<br>Coins: "+coins;
+}
+
+// Upload
+document.getElementById("upload").onchange=(e)=>{
+birdImg.src=URL.createObjectURL(e.target.files[0]);
 };
 
-// upload pipe
-document.getElementById("pipeImg").onchange=(e)=>{
-pipeImg.src = URL.createObjectURL(e.target.files[0]);
-};
-
-window.addEventListener("resize",resize);
-
+// Controls
 window.addEventListener("keydown",e=>{
-if(e.code==="Space") bird.v = lift;
+if(e.code==="Space") bird.v=lift;
+if(e.key==="p") pauseGame();
+if(e.key==="r") restart();
 });
 
 window.addEventListener("click",()=>{
-if(run) bird.v = lift;
+if(running && !paused) bird.v=lift;
 });
+
+window.addEventListener("resize",resize);
 
 resize();
 </script>
