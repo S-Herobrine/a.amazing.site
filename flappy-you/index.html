@@ -15,7 +15,6 @@ height:100vh;
 font-family:Arial;
 }
 
-/* GAME BOX (POKI STYLE) */
 #gameBox{
 width:900px;
 height:500px;
@@ -28,45 +27,65 @@ box-shadow:0 0 40px rgba(0,0,0,0.5);
 
 canvas{display:block}
 
-/* UI */
 #ui{
 position:absolute;
 top:10px;
-left:15px;
+left:10px;
 color:white;
-font-size:18px;
-text-shadow:1px 1px 2px black;
+font-size:16px;
+z-index:10;
 }
 
 #controls{
 position:absolute;
 top:10px;
 right:10px;
+z-index:10;
 }
 
 button{
-padding:6px 12px;
-margin:3px;
+padding:6px 10px;
+margin:2px;
 border:none;
-border-radius:8px;
+border-radius:6px;
 cursor:pointer;
 }
 
-/* SCREENS */
 .screen{
 position:absolute;
 width:100%;
 height:100%;
 display:flex;
-justify-content:center;
-align-items:center;
 flex-direction:column;
-background:rgba(0,0,0,0.5);
+align-items:center;
+justify-content:center;
+background:rgba(0,0,0,0.6);
 color:white;
-z-index:5;
+z-index:20;
 }
 
 .hidden{display:none}
+
+/* SHOP GRID */
+#shopGrid{
+display:grid;
+grid-template-columns:repeat(5,1fr);
+gap:10px;
+margin-top:10px;
+}
+
+.skin{
+width:60px;
+height:60px;
+border-radius:10px;
+cursor:pointer;
+display:flex;
+align-items:center;
+justify-content:center;
+color:black;
+font-weight:bold;
+}
+
 </style>
 </head>
 
@@ -84,7 +103,14 @@ z-index:5;
 <div id="menu" class="screen">
 <h1>FLAPPY YOU 😈</h1>
 <button onclick="start()">Play</button>
+<button onclick="openShop()">Shop</button>
 <input type="file" id="upload">
+</div>
+
+<div id="shop" class="screen hidden">
+<h2>Shop 🛒</h2>
+<div id="shopGrid"></div>
+<button onclick="closeShop()">Back</button>
 </div>
 
 <div id="over" class="screen hidden">
@@ -103,15 +129,61 @@ const ctx=c.getContext("2d");
 
 let birdImg=new Image();
 
+// SKINS (15)
+let skins=[
+"#ff0","#f00","#0f0","#00f","#ff00ff",
+"#00ffff","#ffa500","#fff","#000","#888",
+"#ff9999","#99ff99","#9999ff","#ffff99","#ff66cc"
+];
+
+let owned=JSON.parse(localStorage.getItem("owned"))||[true];
+let equipped=localStorage.getItem("equipped")||0;
+
 let bird,pipes,coinsArr;
 let score=0,coins=0,best=localStorage.getItem("best")||0;
 
 let gravity=0.5,lift=-10,gap=140,speed=3;
 let running=false,paused=false;
 
-let groundX=0;
+// INIT SHOP
+function initShop(){
+let grid=document.getElementById("shopGrid");
+grid.innerHTML="";
 
-// resize to box
+skins.forEach((color,i)=>{
+let div=document.createElement("div");
+div.className="skin";
+div.style.background=color;
+
+let price= (i+1)*5;
+
+div.innerText = owned[i] ? "✔" : price;
+
+div.onclick=()=>{
+if(!owned[i]){
+if(coins>=price){
+coins-=price;
+owned[i]=true;
+}
+}else{
+equipped=i;
+}
+
+save();
+updateUI();
+initShop();
+};
+
+grid.appendChild(div);
+});
+}
+
+function save(){
+localStorage.setItem("owned",JSON.stringify(owned));
+localStorage.setItem("equipped",equipped);
+}
+
+// GAME SETUP
 function resize(){
 c.width=900;
 c.height=500;
@@ -124,14 +196,15 @@ updateUI();
 }
 
 function updateUI(){
-ui.innerHTML=
-"Score: "+score+"<br>Coins: "+coins+"<br>Best: "+best;
+ui.innerHTML="Score: "+score+"<br>Coins: "+coins+"<br>Best: "+best;
 }
 
-// GAME CONTROL
+// SCREENS
 function start(){
 menu.classList.add("hidden");
 over.classList.add("hidden");
+shop.classList.add("hidden");
+
 resize();
 running=true;
 paused=false;
@@ -143,7 +216,17 @@ function restart(){start();}
 function showMenu(){
 running=false;
 menu.classList.remove("hidden");
-over.classList.add("hidden");
+}
+
+function openShop(){
+menu.classList.add("hidden");
+shop.classList.remove("hidden");
+initShop();
+}
+
+function closeShop(){
+shop.classList.add("hidden");
+menu.classList.remove("hidden");
 }
 
 function gameOver(){
@@ -172,15 +255,14 @@ if(bird.y+bird.h>c.height-50) gameOver();
 function drawBird(){
 ctx.save();
 
-// rotation
-ctx.translate(bird.x+bird.w/2,bird.y+bird.h/2);
+ctx.translate(bird.x+20,bird.y+20);
 ctx.rotate(bird.v*0.05);
 
 if(birdImg.src){
-ctx.drawImage(birdImg,-bird.w/2,-bird.h/2,bird.w,bird.h);
+ctx.drawImage(birdImg,-20,-20,40,40);
 }else{
-ctx.fillStyle="yellow";
-ctx.fillRect(-bird.w/2,-bird.h/2,bird.w,bird.h);
+ctx.fillStyle=skins[equipped];
+ctx.fillRect(-20,-20,40,40);
 }
 
 ctx.restore();
@@ -228,7 +310,6 @@ pipes.forEach(p=>{
 ctx.fillRect(p.x,0,80,p.top);
 ctx.fillRect(p.x,p.top+gap,80,c.height-(p.top+gap));
 
-// caps
 ctx.fillRect(p.x-5,p.top-20,90,20);
 ctx.fillRect(p.x-5,p.top+gap,90,20);
 });
@@ -266,12 +347,12 @@ ctx.fill();
 });
 }
 
-// BACKGROUND
+// BG
+let groundX=0;
 function drawBG(){
 ctx.fillStyle="#70c5ce";
 ctx.fillRect(0,0,c.width,c.height);
 
-// ground scroll
 groundX-=2;
 ctx.fillStyle="#ded895";
 ctx.fillRect(groundX,c.height-50,900,50);
@@ -315,6 +396,7 @@ window.addEventListener("click",()=>{
 if(running && !paused) bird.v=lift;
 });
 
+// upload image
 upload.onchange=e=>{
 birdImg.src=URL.createObjectURL(e.target.files[0]);
 };
